@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Medication Interaction Checker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            width: 85%;
+            max-width: 800px;
+        }
+
+        h2 {
+            color: #007bff;
+            text-align: center;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h2 i {
+            margin-right: 10px;
+        }
+
+        p {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #555;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-control {
+            border: 1.5px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 16px;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        .btn-warning i {
+            margin-left: 10px;
+        }
+
+        #response {
+            margin-top: 40px;
+            padding: 25px;
+            background: #f8f8f8;
+            border-radius: 10px;
+            min-height: 150px;
+            border: 1.5px solid #eee;
+            font-size: 1.05em;
+        }
+
+        #response h3 {
+            color: #007bff;
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        #response h3 i {
+            margin-right: 10px;
+        }
+
+        #response strong.interaction {
+            color: #d9534f; /* Red color for highlighting interactions */
+        }
+
+        #response ul {
+            padding-left: 25px;
+        }
+
+        #response li {
+            margin-bottom: 10px;
+        }
+
+        .suggestions {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .suggestions button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            margin: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: 500;
+        }
+
+        .suggestions button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2><i class="fas fa-robot"></i> AI Medication Interaction Checker</h2>
+        <p>
+            Enter your medications to check for potential interactions. <br>
+            <b><i class="fas fa-exclamation-triangle"></i> Please consult a healthcare professional for medical advice.</b>
+        </p>
+        <div class="form-group">
+            <input type="text" class="form-control" id="userInput" placeholder="Enter your medications (e.g., Aspirin, Lipitor)" />
+        </div>
+        <button class="btn btn-warning" onclick="sendMessage()">Check Interactions <i class="fas fa-search"></i></button>
+        <div class="suggestions">
+            <p>Try these common combinations:</p>
+            <button onclick="preset('Aspirin, Ibuprofen')">Aspirin, Ibuprofen</button>
+            <button onclick="preset('Metformin, Glipizide')">Metformin, Glipizide</button>
+            <button onclick="preset('Lisinopril, Hydrochlorothiazide')">Lisinopril, Hydrochlorothiazide</button>
+        </div>
+        <div id="response">
+            <h3><i class="fas fa-comment-dots"></i> Interaction Results</h3>
+        </div>
+    </div>
+    <script>
+        const apiKey = 'AIzaSyBcr8Pb38qJKQfUvcy0atRcWGv0KfOVEdc'; // Replace with your actual Gemini API key - Store securely!
+        const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+        let conversationHistory = [];
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput').value;
+            const responseDiv = document.getElementById('response');
+
+            if (!input) {
+                responseDiv.innerHTML = 'Please enter a list of medications.';
+                return;
+            }
+
+            responseDiv.innerHTML = 'Checking for interactions...';
+
+            conversationHistory.push({ role: 'user', content: input });
+
+            const messages = [
+                {
+                    role: 'system',
+                    content: `You are an AI Medication Interaction Checker. Your purpose is to thoroughly analyze the provided list of medications and warn users about potential drug interactions in a detailed, long-format explanation. Highlight any potential interactions in red using HTML's <strong> tag with the class "interaction". 
+
+                    You are NOT a substitute for professional medical advice. Always explicitly advise users to consult with a doctor or pharmacist for any health concerns or before making any changes to their medication regimen. 
+
+                    If the user asks a question outside of medication interactions, respond with "I can only check for medication interactions. Please consult a healthcare professional for other medical advice." 
+
+                    Remember details from previous turns and do not ask for the same medications again. If you need more information to assess potential interactions, ask a specific and clarifying question about the medications listed (e.g., dosage, frequency, other existing conditions). Provide a comprehensive analysis of potential interactions, including the possible mechanisms and potential effects.`,
+                },
+                ...conversationHistory.map((message) => ({ role: message.role, content: message.content })),
+            ];
+
+            try {
+                const response = await fetch(endpoint + '?key=' + apiKey, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: messages.map(msg => ({
+                            role: msg.role === 'system' ? 'user' : msg.role, // Gemini expects 'user' or 'model'
+                            parts: [{ text: msg.content }]
+                        })),
+                        generationConfig: {
+                            maxOutputTokens: 500, // Increased maxOutputTokens for longer responses
+                        },
+                    }),
+                });
+
+                const data = await response.json();
+                console.log(data);
+
+                const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
+
+                conversationHistory.push({ role: 'model', content: aiResponse }); // Gemini uses 'model' role
+
+                const markdownText = aiResponse;
+                responseDiv.innerHTML = "<h3><i class='fas fa-comment-dots'></i> Interaction Results</h3>" + marked.parse(markdownText);
+            } catch (error) {
+                responseDiv.innerHTML = "<h3><i class='fas fa-comment-dots'></i> Interaction Results</h3>" + 'Error: ' + error.message;
+            }
+        }
+
+        function preset(meds) {
+            document.getElementById('userInput').value = meds;
+            sendMessage();
+        }
+
+    </script>
+</body>
+</html>
